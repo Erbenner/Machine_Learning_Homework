@@ -65,6 +65,7 @@ def majorityCnt(classList):
             classCount[vote] = 0
         else:
             classCount[vote] += 1
+    # >>>  若classCount为空则如何？什么时候为空？  <<<    潜在BUG
     '''
     对字典按照value值进行降序排序
         第一个参数是传入一个可迭代的对象，此处迭代对象的元素为: (key, value)，是一个元组
@@ -72,7 +73,6 @@ def majorityCnt(classList):
         第二个参数是按照元组中第二个值的大小进行排序
         第三个参数是降序，默认false为升序
     '''
-    # >>>  若classCount为空则如何？什么时候为空？  <<<    潜在BUG
     sortedClassCount = sorted(classCount.items(), key=lambda x: x[1], reverse=True)
     # 返回排序结果中（排序结果为list，每一个元素为一个元组）第一个元组的第一个元素
     # 返回对象为int ,表明类别
@@ -100,12 +100,14 @@ def chooseBestFeatureToSplit(dataSet):
     # 得到特征的数量
     numFeature = len(dataSet[0]) - 1
     baseEntropy = calcShannonEnt(dataSet)
+    # 这里初始值选择-1，是因为有的时候信息增益的最大值也小于0，但是大于-1，选择-1作为初始值可以记录此时的值
     bestInfoGain = -1
     bestFeature = -1
     bestMid = -1
     for i in range(numFeature):
         # 获取dataSet第i列的所有值，也即第i个特征的所有取值
         featList = [number[i] for number in dataSet]
+        # 去掉重复的连续值
         featList = set(sorted(featList))
         T_a = []
         sun = featList.pop()
@@ -114,7 +116,7 @@ def chooseBestFeatureToSplit(dataSet):
             T_a.append((sun + moon) / 2)
             sun = moon
             moon = featList.pop()
-
+        # T_a 中存放待考察的二分点
         for value in T_a:
             # 对于每一个二分点来说，先将其分为大于与小于value的两个子集D+与D-
             subDataSet = splitDataSetForSeries(dataSet, i, value)
@@ -133,55 +135,6 @@ def chooseBestFeatureToSplit(dataSet):
                 bestMid = value  # 从取值为bestMid开始二分
     # 返回应当对第几个特征进行划分，以及从哪个点开始二分
     return bestFeature, bestMid, bestInfoGain
-
-
-'''
-C4.5算法中，使用[信息增益率]来作为选择依据
-
-def chooseBestFeatureToSplit(dataSet):
-    # 得到特征的数量
-    numFeature = len(dataSet[0]) - 1
-    baseEntropy = calcShannonEnt(dataSet)
-    bestInfoGain = -1
-    bestFeature = -1
-    bestMid = -1
-    for i in range(numFeature):
-        # 获取dataSet第i列的所有值，也即第i个特征的所有取值
-        featList = [number[i] for number in dataSet]
-        featList = set(sorted(featList))
-        T_a = None
-        if len(featList) == 1:
-            T_a = [featList.pop()]
-        else:
-            T_a = []
-            sun = None
-            moon = featList.pop()
-            while len(featList) > 0:
-                sun = moon
-                moon = featList.pop()
-                T_a.append((sun + moon) / 2)
-
-        for value in T_a:
-            # 对于每一个二分点来说，先将其分为大于与小于value的两个子集D+与D-
-            subDataSet = splitDataSetForSeries(dataSet, i, value)
-            newEntropy = 0
-            splitInfo = 0.0
-            for subSet in subDataSet:
-                # 如果划分点刚好处于最小值或最大值，则可能出现空集
-                if len(subSet) == 0:
-                    continue
-                # 迭代D-与D+两个子集，计算信息增益
-                prob = len(subDataSet) / float(len(dataSet))
-                newEntropy += prob * calcShannonEnt(subSet)
-                splitInfo -= prob * log(prob, 2)
-            infoGain = (baseEntropy - newEntropy) / splitInfo
-            if infoGain > bestInfoGain:
-                bestInfoGain = infoGain
-                bestFeature = i  # 第i个特征
-                bestMid = value  # 从取值为bestMid开始二分
-    # 返回应当对第几个特征进行划分，以及从哪个点开始二分
-    return bestFeature, bestMid, bestInfoGain
-'''
 
 
 def createTree(dataSet, e):
@@ -253,9 +206,62 @@ def pre(root, data):
 
 
 if __name__ == '__main__':
-    data = load_dataset()
-    myTree = createTree(data, 0.1)
-    acc, predict = pre(myTree, data)
+    data = load_dataset()   # 加载数据集
+    myTree = createTree(data, 0.1)  # 建树，e = 0.1
+    acc, predict = pre(myTree, data)    # 在训练集上预测
     print('准确率', acc)
     from tree_show import *
-    createPlot(myTree)
+    createPlot(myTree)  # 画图
+
+
+
+
+
+'''
+如果采用C4.5算法，则“选择最优函数”选用这个。
+C4.5算法中，使用[信息增益率]来作为选择依据
+
+def chooseBestFeatureToSplit(dataSet):
+    # 得到特征的数量
+    numFeature = len(dataSet[0]) - 1
+    baseEntropy = calcShannonEnt(dataSet)
+    bestInfoGain = -1
+    bestFeature = -1
+    bestMid = -1
+    for i in range(numFeature):
+        # 获取dataSet第i列的所有值，也即第i个特征的所有取值
+        featList = [number[i] for number in dataSet]
+        featList = set(sorted(featList))
+        T_a = None
+        if len(featList) == 1:
+            T_a = [featList.pop()]
+        else:
+            T_a = []
+            sun = None
+            moon = featList.pop()
+            while len(featList) > 0:
+                sun = moon
+                moon = featList.pop()
+                T_a.append((sun + moon) / 2)
+
+        for value in T_a:
+            # 对于每一个二分点来说，先将其分为大于与小于value的两个子集D+与D-
+            subDataSet = splitDataSetForSeries(dataSet, i, value)
+            newEntropy = 0
+            splitInfo = 0.0
+            for subSet in subDataSet:
+                # 如果划分点刚好处于最小值或最大值，则可能出现空集
+                if len(subSet) == 0:
+                    continue
+                # 迭代D-与D+两个子集，计算信息增益
+                prob = len(subDataSet) / float(len(dataSet))
+                newEntropy += prob * calcShannonEnt(subSet)
+                splitInfo -= prob * log(prob, 2)
+            infoGain = (baseEntropy - newEntropy) / splitInfo
+            if infoGain > bestInfoGain:
+                bestInfoGain = infoGain
+                bestFeature = i  # 第i个特征
+                bestMid = value  # 从取值为bestMid开始二分
+    # 返回应当对第几个特征进行划分，以及从哪个点开始二分
+    return bestFeature, bestMid, bestInfoGain
+'''
